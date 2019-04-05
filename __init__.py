@@ -53,26 +53,34 @@ class PPT_PT_panel(Panel):
         col.scale_y = 1.2
         col.operator(PPT_OT_CreateNewPipe.bl_idname, icon='IPO_CONSTANT')
 
-        if not context.selected_objects:
-            return
-
         if (context.active_object):
             ob = context.active_object
             ppt_props = ob.ppt_props
 
-            col.split()
-            col.prop(ppt_props, 'edit_mode', toggle=True,
-                     text='Edit Mode', icon='PARTICLE_POINT')
+            if ob.select_get() and ppt_props.is_pipe:
+                col.separator()
+                col.prop(ob, 'name', text="", icon='OUTLINER_DATA_FONT')
 
-            if not ppt_props.edit_mode:
-                col = layout.column(align=True)
-                col.label(text="Parameters:")
-                col.prop(ppt_props, 'radius')
-                col.prop(ppt_props, 'bevel_radius')
                 col.split()
-                col = layout.column(align=True)
-                col.prop(ppt_props, 'bevel_segments')
-                col.prop(ppt_props, 'radius_segments')
+                col.prop(ppt_props, 'edit_mode', toggle=True,
+                        text="Edit Mode", icon='PARTICLE_POINT')
+
+                if not ppt_props.edit_mode:
+                    col = layout.column(align=True)
+                    col.separator()
+                    col.label(text="Parameters:")
+                    col.prop(ppt_props, 'radius')
+                    col.prop(ppt_props, 'bevel_radius')
+                    col.split()
+                    col = layout.column(align=True)
+                    col.prop(ppt_props, 'bevel_segments')
+                    col.prop(ppt_props, 'radius_segments')
+
+                return
+
+        layout.separator()
+        layout.label(text="Select Pipe to Edit", icon='ERROR')
+        layout.separator()
 
 
 class PPT_OT_CreateNewPipe(Operator, AddObjectHelper):
@@ -93,6 +101,7 @@ class PPT_OT_CreateNewPipe(Operator, AddObjectHelper):
         mesh.from_pydata(verts, edges, [])
         ob = object_data_add(context, mesh, operator=self)
         bpy.ops.object.ppt_op_convert_to_pipe()
+        ob.ppt_props.is_pipe = True
 
         return {'FINISHED'}
 
@@ -201,6 +210,7 @@ def update_edit_mode(self, context):
 
 
 class PPT_Props(PropertyGroup):
+    is_pipe: BoolProperty(default=False)
     edit_mode: BoolProperty(default=False, update=update_edit_mode)
 
     radius: FloatProperty(name="Pipe Radius", default=0.25,
