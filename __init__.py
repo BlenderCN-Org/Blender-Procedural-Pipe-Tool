@@ -20,8 +20,9 @@
 
 
 import bpy
-from bpy.props import (FloatProperty, FloatVectorProperty, IntProperty,
-                       PointerProperty, StringProperty, BoolProperty)
+from bpy.app.handlers import load_post, persistent
+from bpy.props import (BoolProperty, FloatProperty, FloatVectorProperty,
+                       IntProperty, PointerProperty, StringProperty)
 from bpy.types import Object, Operator, Panel, PropertyGroup
 from bpy.utils import register_class, unregister_class
 from bpy_extras.object_utils import AddObjectHelper, object_data_add
@@ -103,7 +104,7 @@ class PPT_OT_CreateNewPipe(Operator, AddObjectHelper):
         bpy.ops.object.ppt_op_convert_to_pipe()
         ob.ppt_props.is_pipe = True
 
-        bpy.ops.window_manager.ppt_op_listen_to_keys('INVOKE_DEFAULT')
+        bpy.ops.window_manager.ppt_op_listen_for_keys('INVOKE_DEFAULT')
 
         return {'FINISHED'}
 
@@ -182,16 +183,19 @@ class PPT_OT_ConvertToMesh(Operator):
         return {'FINISHED'}
 
 
-class PPT_OT_LestenForKeys(Operator):
+class PPT_OT_ListenForKeys(Operator):
     """ """
-    bl_idname = "window_manager.ppt_op_listen_to_keys"
+    bl_idname = "window_manager.ppt_op_listen_for_keys"
     bl_label = "Lesten For Keys"
 
     def modal(self, context, event):
         if (event.type == 'TAB' and event.value == 'RELEASE'):
-            flag = context.active_object.ppt_props.edit_mode
-            context.active_object.ppt_props.edit_mode = not flag
-            print('TAB')
+            ob = context.active_object
+
+            if ob.ppt_props.is_pipe:
+                edit_mode = ob.ppt_props.edit_mode
+                ob.ppt_props.edit_mode = not edit_mode
+                print('TAB')
 
         return {'PASS_THROUGH'}
 
@@ -252,17 +256,14 @@ classes = (
     PPT_OT_ConvertToPipe,
     PPT_OT_ConvertToMesh,
     PPT_OT_CreateNewPipe,
-    PPT_OT_LestenForKeys,
+    PPT_OT_ListenForKeys,
     PPT_Props,
 )
 
 
-from bpy.app.handlers import persistent
-
-
 @persistent
 def load_handler(dummy):
-    bpy.ops.window_manager.ppt_op_listen_to_keys('INVOKE_DEFAULT')
+    bpy.ops.window_manager.ppt_op_listen_for_keys('INVOKE_DEFAULT')
 
 
 def register():
@@ -270,10 +271,12 @@ def register():
         register_class(cls)
 
     bpy.types.Object.ppt_props = PointerProperty(type=PPT_Props)
-    bpy.app.handlers.load_post.append(load_handler)
+    load_post.append(load_handler)
 
 
 def unregister():
+    load_post.remove(load_handler)
+
     for cls in classes:
         unregister_class(cls)
 
