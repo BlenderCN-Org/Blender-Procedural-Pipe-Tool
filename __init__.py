@@ -257,11 +257,20 @@ classes = (
 )
 
 
+from bpy.app.handlers import persistent
+
+
+@persistent
+def load_handler(dummy):
+    bpy.ops.window_manager.ppt_op_listen_to_keys('INVOKE_DEFAULT')
+
+
 def register():
     for cls in classes:
         register_class(cls)
 
     bpy.types.Object.ppt_props = PointerProperty(type=PPT_Props)
+    bpy.app.handlers.load_post.append(load_handler)
 
 
 def unregister():
