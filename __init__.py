@@ -63,7 +63,7 @@ class PPT_PT_panel(Panel):
 
                 col.split()
                 col.prop(ppt_props, 'edit_mode', toggle=True,
-                        text="Edit Mode", icon='PARTICLE_POINT')
+                         text="Edit Mode", icon='PARTICLE_POINT')
 
                 if not ppt_props.edit_mode:
                     col = layout.column(align=True)
@@ -102,6 +102,8 @@ class PPT_OT_CreateNewPipe(Operator, AddObjectHelper):
         ob = object_data_add(context, mesh, operator=self)
         bpy.ops.object.ppt_op_convert_to_pipe()
         ob.ppt_props.is_pipe = True
+
+        bpy.ops.window_manager.ppt_op_listen_to_keys('INVOKE_DEFAULT')
 
         return {'FINISHED'}
 
@@ -180,6 +182,24 @@ class PPT_OT_ConvertToMesh(Operator):
         return {'FINISHED'}
 
 
+class PPT_OT_LestenForKeys(Operator):
+    """ """
+    bl_idname = "window_manager.ppt_op_listen_to_keys"
+    bl_label = "Lesten For Keys"
+
+    def modal(self, context, event):
+        if (event.type == 'TAB' and event.value == 'RELEASE'):
+            flag = context.active_object.ppt_props.edit_mode
+            context.active_object.ppt_props.edit_mode = not flag
+            print('TAB')
+
+        return {'PASS_THROUGH'}
+
+    def invoke(self, context, event):
+        context.window_manager.modal_handler_add(self)
+        return {'RUNNING_MODAL'}
+
+
 def update_destructive(self, context):
     if context.active_object.type == 'CURVE':
         bpy.ops.object.ppt_op_convert_to_mesh()
@@ -232,6 +252,7 @@ classes = (
     PPT_OT_ConvertToPipe,
     PPT_OT_ConvertToMesh,
     PPT_OT_CreateNewPipe,
+    PPT_OT_LestenForKeys,
     PPT_Props,
 )
 
