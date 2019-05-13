@@ -195,7 +195,7 @@ class PPT_OT_ListenForKeys(Operator):
             if ob.ppt_props.is_pipe:
                 edit_mode = ob.ppt_props.edit_mode
                 ob.ppt_props.edit_mode = not edit_mode
-                print('TAB')
+                return {'FINISHED'}
 
         return {'PASS_THROUGH'}
 
@@ -231,6 +231,8 @@ def update_edit_mode(self, context):
     else:
         bpy.ops.object.ppt_op_convert_to_pipe()
         bpy.ops.object.mode_set(mode='OBJECT')
+
+    bpy.ops.window_manager.ppt_op_listen_for_keys('INVOKE_DEFAULT')
 
 
 class PPT_Props(PropertyGroup):
