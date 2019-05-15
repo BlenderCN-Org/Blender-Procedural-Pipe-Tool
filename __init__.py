@@ -63,6 +63,7 @@ class PPT_PT_panel(Panel):
                 col.prop(ob, 'name', text="", icon='OUTLINER_DATA_FONT')
 
                 col.split()
+                col.enabled = len(context.selected_objects) == 1
                 col.prop(ppt_props, 'edit_mode', toggle=True,
                          text="Edit Mode", icon='PARTICLE_POINT')
 
@@ -188,8 +189,16 @@ class PPT_OT_ListenForKeys(Operator):
     bl_idname = "window_manager.ppt_op_listen_for_keys"
     bl_label = "Lesten For Keys"
 
+    is_mod_key: BoolProperty(default=False)
+
     def modal(self, context, event):
-        if (event.type == 'TAB' and event.value == 'RELEASE'):
+        if event.type in ('LEFT_CTRL', 'LEFT_SHIFT'):
+            self.is_mod_key = True
+            bpy.app.timers.register(self.reset_mod_key, first_interval=0.1)
+        elif (event.shift or event.ctrl):
+            pass
+        elif (event.type == 'TAB' and event.value == 'RELEASE' and
+              self.is_mod_key is False and len(context.selected_objects) == 1):
             ob = context.active_object
 
             if ob.ppt_props.is_pipe:
@@ -198,6 +207,9 @@ class PPT_OT_ListenForKeys(Operator):
                 return {'FINISHED'}
 
         return {'PASS_THROUGH'}
+
+    def reset_mod_key(self):
+        self.is_mod_key = False
 
     def invoke(self, context, event):
         context.window_manager.modal_handler_add(self)
