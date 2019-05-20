@@ -73,10 +73,11 @@ class PPT_PT_panel(Panel):
                     col.label(text="Parameters:")
                     col.prop(ppt_props, 'radius')
                     col.prop(ppt_props, 'bevel_radius')
-                    col.split()
                     col = layout.column(align=True)
                     col.prop(ppt_props, 'bevel_segments')
                     col.prop(ppt_props, 'radius_segments')
+                    col = layout.column(align=True)
+                    col.prop(ppt_props, 'fill_caps')
 
                 return
 
@@ -145,11 +146,20 @@ class PPT_OT_ConvertToPipe(Operator):
                            segments=ppt_props.bevel_segments, vertex_only=True)
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.convert(target='CURVE')
-        ob.data.bevel_depth = ppt_props.radius
-        ob.data.bevel_resolution = (round(ppt_props.radius_segments) - 4) / 2
+        ob.data.use_fill_caps = ppt_props.fill_caps
 
         for spline in ob.data.splines:
             spline.use_smooth = True
+
+        if len(ob.children) > 0:
+            circle = ob.children[0]
+        else:
+            circle = create_circle(context, ob, ppt_props)
+
+        circle.data.resolution_u = (
+            round(ppt_props.radius_segments) - 4) / 2
+
+        ob.data.bevel_object = circle
 
         return {'FINISHED'}
 
@@ -216,10 +226,42 @@ class PPT_OT_ListenForKeys(Operator):
         return {'RUNNING_MODAL'}
 
 
+def create_circle(context, ob, ppt_props):
+    ob_colection = context.active_object.users_collection[0]
+
+    layer_collection = context.view_layer.layer_collection
+    context.view_layer.active_layer_collection = get_layer_collection(
+        layer_collection, ob_colection.name)
+
+    bpy.ops.curve.primitive_bezier_circle_add(
+        radius=1, enter_editmode=False, location=ob.location)
+    circle = context.active_object
+    radius = ppt_props.radius
+    circle.scale = Vector((radius, radius, radius))
+    circle.parent = ob
+    circle.hide_render = True
+    circle.hide_viewport = True
+    circle.select_set(False)
+    ob.select_set(True)
+    context.view_layer.objects.active = ob
+
+    return circle
+
+
 def update_destructive(self, context):
     if context.active_object.type == 'CURVE':
         bpy.ops.object.ppt_op_convert_to_mesh()
         bpy.ops.object.ppt_op_convert_to_pipe()
+
+
+def get_layer_collection(layer_colection, name):
+    found = None
+    if (layer_colection.name == name):
+        return layer_colection
+    for layer in layer_colection.children:
+        found = get_layer_collection(layer, name)
+        if found:
+            return found
 
 
 def update_non_destructive(self, context):
@@ -227,8 +269,18 @@ def update_non_destructive(self, context):
 
     if ob.type == 'CURVE':
         ppt_props = ob.ppt_props
-        ob.data.bevel_depth = ppt_props.radius
-        ob.data.bevel_resolution = (round(ppt_props.radius_segments) - 4) / 2
+
+        if len(ob.children) > 0:
+            circle = ob.children[0]
+        else:
+            circle = create_circle(context, ob, ppt_props)
+            ob.data.bevel_object = circle
+
+        circle.data.resolution_u = (
+            round(ppt_props.radius_segments) - 4) / 2
+        radius = ppt_props.radius
+        circle.scale = Vector((radius, radius, radius))
+        ob.data.use_fill_caps = ppt_props.fill_caps
 
 
 def update_edit_mode(self, context):
@@ -259,7 +311,10 @@ class PPT_Props(PropertyGroup):
     bevel_segments: IntProperty(
         name="Bevel Segments", default=4, min=1, max=16, update=update_destructive)
     radius_segments: FloatProperty(
-        name="Radius Segments", default=8, min=4, max=16, step=200, precision=0, update=update_non_destructive)
+        name="Radius Segments", default=8, min=4, max=16, step=400, precision=0, update=update_non_destructive)
+
+    fill_caps: BoolProperty(name="Fill Caps", default=False,
+                            update=update_non_destructive)
 
     verts: StringProperty()
     edges: StringProperty()
