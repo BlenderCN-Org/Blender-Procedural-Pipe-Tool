@@ -115,7 +115,7 @@ class PPT_OT_ConvertToPipe(Operator):
     """ """
     bl_idname = "object.ppt_op_convert_to_pipe"
     bl_label = "Convert to Pipe"
-    bl_options = {'UNDO_GROUPED'}
+    bl_options = {'UNDO_GROUPED', 'INTERNAL'}
 
     @classmethod
     def poll(cls, context):
@@ -140,6 +140,8 @@ class PPT_OT_ConvertToPipe(Operator):
         ppt_props.verts = str(verts)
         ppt_props.edges = str(edges)
 
+        active_material = ob.active_material
+
         # Convert to pipe
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.mesh.bevel(offset=ppt_props.bevel_radius, offset_pct=0,
@@ -161,6 +163,9 @@ class PPT_OT_ConvertToPipe(Operator):
 
         ob.data.bevel_object = circle
 
+        if active_material is not None:
+            ob.data.materials.append(active_material)
+
         return {'FINISHED'}
 
 
@@ -168,7 +173,7 @@ class PPT_OT_ConvertToMesh(Operator):
     """ """
     bl_idname = "object.ppt_op_convert_to_mesh"
     bl_label = "Convert to Mesh"
-    bl_options = {'UNDO_GROUPED'}
+    bl_options = {'UNDO_GROUPED', 'INTERNAL'}
 
     @classmethod
     def poll(cls, context):
@@ -185,11 +190,16 @@ class PPT_OT_ConvertToMesh(Operator):
         verts = eval(ppt_props.verts)
         edges = eval(ppt_props.edges)
 
+        active_material = ob.active_material
+
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.convert(target='MESH')
         mesh = bpy.data.meshes.new(name=ob.name)
         mesh.from_pydata(verts, edges, [])
         ob.data = mesh
+
+        if active_material is not None:
+            ob.data.materials.append(active_material)
 
         return {'FINISHED'}
 
@@ -202,7 +212,7 @@ class PPT_OT_ListenForKeys(Operator):
     is_mod_key: BoolProperty(default=False)
 
     def modal(self, context, event):
-        if event.type in ('LEFT_CTRL', 'LEFT_SHIFT'):
+        if event.type in ('LEFT_CTRL', 'LEFT_SHIFT', 'LEFT_ALT'):
             self.is_mod_key = True
             bpy.app.timers.register(self.reset_mod_key, first_interval=0.1)
         elif (event.shift or event.ctrl):
